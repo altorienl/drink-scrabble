@@ -1,6 +1,6 @@
 const { launch, Page } = require('./cdp.js');
 const path = require('path');
-const URL = 'file://' + path.resolve(__dirname, '../drink-scrabble.html');
+const SITE = 'file://' + path.resolve(__dirname, '../drink-scrabble.html');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let pass = 0, fail = 0;
 const t = (n,c,e='') => { c ? (pass++, console.log('  ok   '+n)) : (fail++, console.log('  FAIL '+n+(e?'  -> '+e:''))); };
@@ -8,7 +8,7 @@ const t = (n,c,e='') => { c ? (pass++, console.log('  ok   '+n)) : (fail++, cons
 (async () => {
   const { proc } = await launch();
   const page = await Page.open();
-  await page.goto(URL);
+  await page.goto(SITE);
   console.log('Single-file build, loaded from file://');
   t('page loads', (await page.eval('document.title')).includes('Drink Scrabble'));
   t('dictionary inlined', await page.eval('window.DRINK_WORDS.size') === 371);

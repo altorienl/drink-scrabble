@@ -7,7 +7,11 @@ are live**. Play one and it scores double and goes onto the group's **Bar Tab**.
 When you stop playing, the Tab is matched against **74 real Manhattan happy hours**
 to work out where the party is going.
 
-## Run it
+## Play it
+
+**<https://altorienl.github.io/drink-scrabble/>**
+
+## Run it locally
 
 Open **`drink-scrabble.html`** — one self-contained file, no server, no install.
 Double-click it, or:
@@ -85,6 +89,7 @@ plus a small house supplement for modern bar vocabulary it predates — `SOJU`,
     node test/test_engine.js       # 31 - board, bag, placement rules, scoring
     node test/test_recommend.js    # 28 - tag weighting, time windows, blocking, bounds
     node test/verify_single.js     # 18 - the built file in a real browser, real mouse
+    node test/verify_live.js       # 10 - the deployed Pages site, end to end
 
 The browser test drives headless Chromium over CDP using only Node built-ins
 (`test/cdp.js`). It needs Playwright's cached Chromium; skip it if that is absent.

@@ -1,24 +1,59 @@
 /* Minimal CDP driver using only Node built-ins. */
 const { spawn } = require('child_process');
 const os = require('os'), fs = require('fs'), path = require('path');
+const http = require('http');
+
+/* Node's global fetch intermittently throws a bogus "Failed to parse URL" on these
+   loopback calls. node:http has no such quirk, so use it for the CDP HTTP endpoints. */
+function httpJson(pathname, method = 'GET') {
+  return new Promise((resolve, reject) => {
+    const req = http.request(
+      { host: '127.0.0.1', port: PORT, path: pathname, method, timeout: 5000 },
+      (res) => {
+        let body = '';
+        res.setEncoding('utf8');
+        res.on('data', (c) => body += c);
+        res.on('end', () => {
+          if (res.statusCode < 200 || res.statusCode >= 300) return reject(new Error('HTTP ' + res.statusCode));
+          try { resolve(JSON.parse(body)); } catch (e) { reject(e); }
+        });
+      });
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(new Error('timeout')); });
+    req.end();
+  });
+}
 
 const BIN = path.join(os.homedir(),
   'Library/Caches/ms-playwright/chromium_headless_shell-1243/chrome-headless-shell-mac-arm64/chrome-headless-shell');
-const PORT = 9400 + Math.floor(Math.random() * 400); // fresh port dodges TIME_WAIT after a kill
+let PORT = 0; // set from the browser's own DevTools banner once it starts
 
 async function launch() {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'ds-prof-'));
   const proc = spawn(BIN, [
-    `--remote-debugging-port=${PORT}`, `--user-data-dir=${profile}`,
+    '--remote-debugging-port=0', `--user-data-dir=${profile}`,
     '--no-first-run', '--no-sandbox', '--disable-gpu',
     '--window-size=1440,1100', '--hide-scrollbars'
   ], { stdio: ['ignore', 'pipe', 'pipe'] });
+
+  // Port 0 lets the OS pick a free one; the browser prints it. Parsing the banner
+  // is the only way to know which port it actually got.
+  PORT = await new Promise((resolve, reject) => {
+    let buf = '';
+    const to = setTimeout(() => reject(new Error('no DevTools banner: ' + buf.slice(0, 300))), 20000);
+    proc.stderr.on('data', (d) => {
+      buf += d;
+      const m = buf.match(/DevTools listening on ws:\/\/127\.0\.0\.1:(\d+)\//);
+      if (m) { clearTimeout(to); resolve(Number(m[1])); }
+    });
+    proc.on('exit', (c) => { clearTimeout(to); reject(new Error('browser exited code ' + c + ': ' + buf.slice(0, 300))); });
+  });
   let up = false, lastErr = null;
   for (let i = 0; i < 80; i++) {
     if (proc.exitCode !== null) throw new Error(`browser exited early with code ${proc.exitCode}`);
     try {
-      const r = await fetch(`http://127.0.0.1:${PORT}/json/version`);
-      if (r.ok) { up = true; break; }
+      await httpJson('/json/version');
+      up = true; break;
     } catch (e) { lastErr = e; }
     await new Promise(r => setTimeout(r, 150));
   }
@@ -32,12 +67,11 @@ class Page {
     // Reuse the browser's existing blank target; /json/new chokes on some schemes.
     let t = null;
     for (let i = 0; i < 20 && !t; i++) {
-      const list = await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json();
+      const list = await httpJson('/json/list');
       t = list.find(x => x.type === 'page');
       if (!t) {
-        const r = await fetch(`http://127.0.0.1:${PORT}/json/new?about:blank`, { method: 'PUT' });
-        if (r.ok) t = await r.json();
-        else await new Promise(s => setTimeout(s, 150));
+        try { t = await httpJson('/json/new?about:blank', 'PUT'); }
+        catch { await new Promise(s => setTimeout(s, 150)); }
       }
     }
     if (!t || !t.webSocketDebuggerUrl) throw new Error('could not get a page target');
