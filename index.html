@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drink Scrabble - play for the bar</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-tiles" aria-hidden="true">
+      <i>D</i><i>R</i><i>I</i><i>N</i><i>K</i>
+    </span>
+    <span class="brand-sub">Scrabble &rarr; Manhattan happy hour</span>
+  </div>
+  <div class="topbar-right">
+    <span id="bag-count" class="chip" title="Tiles left in the bag">100 in bag</span>
+    <button id="theme-toggle" class="btn btn-ghost" type="button" aria-label="Switch to light mode">Light</button>
+  </div>
+</header>
+
+<!-- ======================= SETUP ======================= -->
+<main id="screen-setup" class="screen">
+  <section class="panel panel-wide">
+    <h1>Play Scrabble. The board picks the bar.</h1>
+    <p class="lede">
+      Score words the normal way. But <strong>371 drink and bar words</strong> are live:
+      play one and it scores double and goes on the group's Bar Tab. When you stop playing,
+      the Tab is matched against <strong id="bar-count-lede">74</strong> real Manhattan happy
+      hours to tell you where the party is going.
+    </p>
+
+    <div class="setup-grid">
+      <div class="setup-col">
+        <h2>Who is playing</h2>
+        <div id="player-list" class="player-list"></div>
+        <div class="row">
+          <input id="player-name" type="text" placeholder="Name" maxlength="18" autocomplete="off">
+          <button id="add-player" class="btn" type="button">Add player</button>
+        </div>
+        <p class="hint">Two to four players. One device, passed around &mdash; the rack hides between turns.</p>
+      </div>
+
+      <div class="setup-col">
+        <h2>The night</h2>
+        <div class="field">
+          <label for="opt-day">Going out on</label>
+          <select id="opt-day"></select>
+        </div>
+        <div class="field">
+          <label for="opt-time">Arriving around</label>
+          <select id="opt-time"></select>
+        </div>
+        <div class="field">
+          <label for="opt-size">People in the party</label>
+          <input id="opt-size" type="number" min="1" max="40" value="8">
+        </div>
+        <div class="field">
+          <label for="opt-budget">Budget</label>
+          <select id="opt-budget">
+            <option value="1">As cheap as it gets &mdash; $1-6 drinks</option>
+            <option value="2" selected>Cheap &mdash; up to about $9</option>
+            <option value="3">Mid &mdash; up to about $13</option>
+            <option value="4">Whatever it costs</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Neighbourhoods <span class="label-note">(none selected = all of them)</span></label>
+          <div id="hood-picker" class="hood-picker"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="setup-actions">
+      <button id="start-game" class="btn btn-primary btn-lg" type="button">Start the game</button>
+      <span id="setup-error" class="inline-error" role="status"></span>
+    </div>
+  </section>
+</main>
+
+<!-- ======================= GAME ======================= -->
+<main id="screen-game" class="screen" hidden>
+  <div class="game-layout">
+
+    <section class="board-area">
+      <div id="board" class="board" role="grid" aria-label="Scrabble board"></div>
+      <div id="move-feedback" class="move-feedback" role="status" aria-live="polite"></div>
+    </section>
+
+    <aside class="sidebar">
+      <section class="panel">
+        <div class="turn-head">
+          <h2 id="turn-name">&nbsp;</h2>
+          <span id="turn-dir" class="chip chip-dir" title="Typing direction">&rarr; across</span>
+        </div>
+        <div id="rack" class="rack" aria-label="Your tiles"></div>
+        <div class="rack-controls">
+          <button id="btn-submit" class="btn btn-primary" type="button">Play word</button>
+          <button id="btn-recall" class="btn" type="button">Recall</button>
+          <button id="btn-shuffle" class="btn" type="button">Shuffle</button>
+        </div>
+        <div class="rack-controls">
+          <button id="btn-pass" class="btn btn-ghost" type="button">Pass</button>
+          <button id="btn-swap" class="btn btn-ghost" type="button">Swap tiles</button>
+        </div>
+        <p class="hint">
+          Click a square, then type. Click it again to flip across/down.
+          <kbd>Enter</kbd> plays, <kbd>Esc</kbd> recalls.
+        </p>
+      </section>
+
+      <section class="panel">
+        <h2>Score</h2>
+        <div id="scoreboard" class="scoreboard"></div>
+      </section>
+
+      <section class="panel">
+        <div class="tab-head">
+          <h2>Bar Tab</h2>
+          <span id="tab-count" class="chip">0 pours</span>
+        </div>
+        <div id="bar-tab" class="bar-tab">
+          <p class="empty-note">No drink words played yet. Try GIN, OYSTER, PATIO, CHEAP&hellip;</p>
+        </div>
+      </section>
+
+      <button id="btn-finish" class="btn btn-finish" type="button">Stop playing &rarr; pick the bar</button>
+    </aside>
+  </div>
+</main>
+
+<!-- ======================= RESULTS ======================= -->
+<main id="screen-results" class="screen" hidden>
+  <div id="results-body"></div>
+</main>
+
+<!-- ======================= OVERLAYS ======================= -->
+<div id="handoff" class="overlay" hidden>
+  <div class="overlay-card">
+    <p class="overlay-kicker">Pass the device to</p>
+    <h2 id="handoff-name">&nbsp;</h2>
+    <p id="handoff-last" class="overlay-note"></p>
+    <button id="handoff-go" class="btn btn-primary btn-lg" type="button">Ready &mdash; show my tiles</button>
+  </div>
+</div>
+
+<div id="blank-picker" class="overlay" hidden>
+  <div class="overlay-card">
+    <p class="overlay-kicker">Blank tile</p>
+    <h2>What letter is it?</h2>
+    <div id="blank-letters" class="blank-letters"></div>
+    <button id="blank-cancel" class="btn btn-ghost" type="button">Cancel</button>
+  </div>
+</div>
+
+<div id="swap-picker" class="overlay" hidden>
+  <div class="overlay-card">
+    <p class="overlay-kicker">Swap tiles</p>
+    <h2>Pick the tiles to throw back</h2>
+    <div id="swap-letters" class="blank-letters"></div>
+    <p class="overlay-note">Costs your turn. You draw the same number back.</p>
+    <div class="row row-center">
+      <button id="swap-confirm" class="btn btn-primary" type="button">Swap</button>
+      <button id="swap-cancel" class="btn btn-ghost" type="button">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="pour-toast" class="toast" hidden></div>
+
+<script src="js/dict.js"></script>
+<script src="js/lexicon.js"></script>
+<script src="js/bars.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/recommend.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
